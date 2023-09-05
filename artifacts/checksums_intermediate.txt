@@ -1,0 +1,1 @@
+054e1232308954338d48d7739298082c4028bc5106334fa37058a118343473e1  ./target/wasm32-unknown-unknown/release/juno_staking_hooks_example.wasm
