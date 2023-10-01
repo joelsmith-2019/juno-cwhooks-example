@@ -9,10 +9,11 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 #[cw_serde]
 pub struct LastCreatedValidator {
-    pub val_addr: String,
     pub moniker: String,
+    pub validator_address: String,
     pub commission: String,
+    pub validator_tokens: String,
+    pub bonded_tokens: String,
+    pub bond_status: String,
 }
 pub const LAST_CREATED_VALIDATOR: Item<LastCreatedValidator> = Item::new("last_val_info");
-
-

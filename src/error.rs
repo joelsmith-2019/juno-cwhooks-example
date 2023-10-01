@@ -7,5 +7,5 @@ pub enum Never {}
 #[derive(Error, Debug)]
 pub enum ContractError {
     #[error("{0}")]
-    Std(#[from] StdError),    
+    Std(#[from] StdError),
 }
