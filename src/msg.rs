@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint64;
 
 #[cw_serde]
 pub struct InstantiateMsg {}
@@ -8,10 +9,21 @@ pub enum ExecuteMsg {
     Increment {},
 }
 
+// create a type named Validator
+#[cw_serde]
+pub struct Validator {
+    pub moniker: String,
+    pub validator_address: String,
+    pub commission: String,
+    pub validator_tokens: String,
+    pub bonded_tokens: String,
+    pub bond_status: String,
+}
+
 // Comes from the chain when it fires
 #[cw_serde]
 pub enum SudoMsg {
-    // "after_validator_created":{"moniker":"test123","validator_address":"junovaloper1efd63aw40lxf3n4mhf7dzhjkr453axurnh5ze0","commission":"0.050000000000000000","validator_tokens":"0","bonded_tokens":"0","bond_status":"BOND_STATUS_UNBONDED"}}
+    // Validators
     AfterValidatorCreated {
         moniker: String,
         validator_address: String,
@@ -20,20 +32,72 @@ pub enum SudoMsg {
         bonded_tokens: String,
         bond_status: String,
     },
-    // BeforeValidatorCreated
-    // AfterValidatorModified
+    AfterValidatorRemoved {
+        moniker: String,
+        validator_address: String,
+        commission: String,
+        validator_tokens: String,
+        bonded_tokens: String,
+        bond_status: String,
+    },
+    BeforeValidatorModified {
+        moniker: String,
+        validator_address: String,
+        commission: String,
+        validator_tokens: String,
+        bonded_tokens: String,
+        bond_status: String,
+    },
+    AfterValidatorModified {
+        moniker: String,
+        validator_address: String,
+        commission: String,
+        validator_tokens: String,
+        bonded_tokens: String,
+        bond_status: String,
+    },
+    AfterValidatorBonded {
+        moniker: String,
+        validator_address: String,
+        commission: String,
+        validator_tokens: String,
+        bonded_tokens: String,
+        bond_status: String,
+    },
+    AfterValidatorBeginUnbonding {
+        moniker: String,
+        validator_address: String,
+        commission: String,
+        validator_tokens: String,
+        bonded_tokens: String,
+        bond_status: String,
+    },
+    BeforeValidatorSlashed {
+        moniker: String,
+        validator_address: String,
+        slashed_amount: String,
+    },
 
-    // {"after_delegation_modified":{"validator_address":"junovaloper1efd63aw40lxf3n4mhf7dzhjkr453axurnh5ze0","delegator_address":"juno1efd63aw40lxf3n4mhf7dzhjkr453axurv2zdzk","shares":"1.000000000000000000"}}
+    // Delegations
+    BeforeDelegationCreated {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
+    BeforeDelegationSharesModified {
+        validator_address: String,
+        delegator_address: String,
+        shares: String,
+    },
     AfterDelegationModified {
         validator_address: String,
         delegator_address: String,
         shares: String,
     },
-    
-    BeforeValidatorSlashed {
-        moniker: String,
+    BeforeDelegationRemoved {
         validator_address: String,
-        slashed_amount: String,
+        delegator_address: String,
+        shares: String,
     },
 }
 
@@ -43,8 +107,14 @@ pub enum QueryMsg {
     #[returns(crate::state::Config)]
     GetConfig {},
 
-    #[returns(crate::state::LastCreatedValidator)]
-    GetLastValInfo {},
+    #[returns(crate::state::Validator)]
+    LastValChange {},
+
+    #[returns(crate::state::Delegation)]
+    LastDelegationChange {},
+
+    #[returns(crate::state::ValidatorSlashed)]
+    LastValidatorSlash {},
 }
 
 // We define a custom struct for each query response

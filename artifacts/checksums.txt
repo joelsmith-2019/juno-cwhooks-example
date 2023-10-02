@@ -1,1 +1,1 @@
-68cb273a2128033f8c9fde6191e25652f390b3bee2068c5dbd538465c8e36091  juno_staking_hooks_example.wasm
+4f5225253607a9dc5c4e82ebfde0d15efedc60a86c053558d5ca09e3d3882e6c  juno_staking_hooks_example.wasm

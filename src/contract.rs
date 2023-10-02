@@ -1,11 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64,
+};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
-use crate::state::{Config, LastCreatedValidator, CONFIG, LAST_CREATED_VALIDATOR};
+use crate::state::{
+    Config, Delegation, Validator, ValidatorSlashed, CONFIG, LAST_DELEGATION_CHANGE,
+    LAST_VALIDATOR, VALIDATOR_SLASHED,
+};
 
 const CONTRACT_NAME: &str = "crates.io:cw-ibc-example";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -19,10 +24,11 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    CONFIG.save(deps.storage, &Config { val: 0 })?;
-    LAST_CREATED_VALIDATOR.save(
+    CONFIG.save(deps.storage, &Config { calls: 0 })?;
+
+    LAST_VALIDATOR.save(
         deps.storage,
-        &LastCreatedValidator {
+        &Validator {
             validator_address: "".to_string(),
             moniker: "".to_string(),
             commission: "".to_string(),
@@ -32,12 +38,30 @@ pub fn instantiate(
         },
     )?;
 
+    VALIDATOR_SLASHED.save(
+        deps.storage,
+        &ValidatorSlashed {
+            moniker: "".to_string(),
+            validator_address: "".to_string(),
+            slashed_amount: "".to_string(),
+        },
+    )?;
+
+    LAST_DELEGATION_CHANGE.save(
+        deps.storage,
+        &Delegation {
+            validator_address: "".to_string(),
+            delegator_address: "".to_string(),
+            shares: "".to_string(),
+        },
+    )?;
+
     Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
 fn increment(deps: DepsMut) -> Result<(), ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
-    config.val += 1;
+    config.calls += 1;
     CONFIG.save(deps.storage, &config)?;
     Ok(())
 }
@@ -57,6 +81,48 @@ pub fn execute(
     }
 }
 
+fn last_validator(
+    deps: DepsMut,
+    moniker: String,
+    validator_address: String,
+    commission: String,
+    validator_tokens: String,
+    bonded_tokens: String,
+    bond_status: String,
+) -> Result<Response, ContractError> {
+    LAST_VALIDATOR.save(
+        deps.storage,
+        &Validator {
+            validator_address,
+            moniker,
+            commission,
+            bond_status,
+            bonded_tokens,
+            validator_tokens,
+        },
+    )?;
+    increment(deps)?;
+    Ok(Response::new())
+}
+
+fn last_delegation(
+    deps: DepsMut,
+    validator_address: String,
+    delegator_address: String,
+    shares: String,
+) -> Result<Response, ContractError> {
+    LAST_DELEGATION_CHANGE.save(
+        deps.storage,
+        &Delegation {
+            validator_address,
+            delegator_address,
+            shares,
+        },
+    )?;
+    increment(deps)?;
+    Ok(Response::new())
+}
+
 // sudo msg
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
@@ -68,52 +134,152 @@ pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, Contract
             validator_tokens,
             bonded_tokens,
             bond_status,
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::AfterDelegationModified {
+            validator_address,
+            delegator_address,
+            shares,
+        } => last_delegation(deps, validator_address, delegator_address, shares),
+        SudoMsg::BeforeValidatorSlashed {
+            moniker,
+            validator_address,
+            slashed_amount,
         } => {
-            LAST_CREATED_VALIDATOR.save(
+            VALIDATOR_SLASHED.save(
                 deps.storage,
-                &LastCreatedValidator {
-                    validator_address,
+                &ValidatorSlashed {
                     moniker,
-                    commission,
-                    bond_status,
-                    bonded_tokens,
-                    validator_tokens,
+                    validator_address,
+                    slashed_amount,
                 },
             )?;
-
-            increment(deps)?;
             Ok(Response::new())
-        },
-
-        SudoMsg::AfterDelegationModified { validator_address, delegator_address, shares } => {            
-            Ok(Response::new())
-        },
-
-
+        }
+        SudoMsg::AfterValidatorRemoved {
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::BeforeValidatorModified {
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::AfterValidatorModified {
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::AfterValidatorBonded {
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::AfterValidatorBeginUnbonding {
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,            
+        } => last_validator(
+            deps,
+            moniker,
+            validator_address,
+            commission,
+            validator_tokens,
+            bonded_tokens,
+            bond_status,
+        ),
+        SudoMsg::BeforeDelegationCreated {
+            validator_address,
+            delegator_address,
+            shares,
+        } => last_delegation(deps, validator_address, delegator_address, shares),
+        SudoMsg::BeforeDelegationSharesModified {
+            validator_address,
+            delegator_address,
+            shares,
+        } => last_delegation(deps, validator_address, delegator_address, shares),
+        SudoMsg::BeforeDelegationRemoved {
+            validator_address,
+            delegator_address,
+            shares,
+        } => last_delegation(deps, validator_address, delegator_address, shares),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
-        QueryMsg::GetLastValInfo {} => to_binary(&query_last_val(deps)?),
+        QueryMsg::GetConfig {} => {
+            let count = CONFIG.load(deps.storage)?.calls;
+            to_binary(&Config { calls: count })
+        }
+        QueryMsg::LastValChange {} => {
+            let val: Validator = LAST_VALIDATOR.load(deps.storage)?;
+            to_binary(&val)
+        }
+
+        QueryMsg::LastValidatorSlash {} => {
+            let val: ValidatorSlashed = VALIDATOR_SLASHED.load(deps.storage)?;
+            to_binary(&val)
+        }
+        QueryMsg::LastDelegationChange {} => {
+            let val: Delegation = LAST_DELEGATION_CHANGE.load(deps.storage)?;
+            to_binary(&val)
+        }
     }
-}
-
-fn query_config(deps: Deps) -> StdResult<Config> {
-    let count = CONFIG.load(deps.storage)?.val;
-    Ok(Config { val: count })
-}
-
-fn query_last_val(deps: Deps) -> StdResult<LastCreatedValidator> {
-    let val: LastCreatedValidator = LAST_CREATED_VALIDATOR.load(deps.storage)?;
-    Ok(LastCreatedValidator {
-        commission: val.commission,
-        moniker: val.moniker,
-        bond_status: val.bond_status,
-        bonded_tokens: val.bonded_tokens,
-        validator_address: val.validator_address,
-        validator_tokens: val.validator_tokens,
-    })
 }
