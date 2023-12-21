@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint64,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
 
@@ -61,8 +61,10 @@ pub fn instantiate(
 
 fn increment(deps: DepsMut) -> Result<(), ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
-    config.calls += 1;
-    CONFIG.save(deps.storage, &config)?;
+    for _ in 0..500 {   
+        config.calls += 1;
+        CONFIG.save(deps.storage, &config)?;
+    }
     Ok(())
 }
 
